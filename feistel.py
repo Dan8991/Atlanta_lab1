@@ -5,10 +5,11 @@ k = key
 n = number of rounds
 l = message length
 '''
-def linear_subkey_generation(k, n, lu):
+def linear_subkey_generation(k, n):
 
+    lk = k.shape[0]
     #the +1 and -1 are not needed here since the indexes start from 0 and not from 1
-    subkeys = np.fromfunction(lambda i, j: k[(5 * (i+1) + j) % lu], (n, lu), dtype=int ) 
+    subkeys = np.fromfunction(lambda i, j: k[(5 * (i + 1) + j) % lk], (n, lk), dtype=int ) 
 
     return subkeys
 
@@ -55,7 +56,7 @@ class Feistel():
         self.n = n
         self.round_function = round_function
         self.subkey_generation = subkey_generation
-        self.subkeys = subkey_generation(k, n, lu)
+        self.subkeys = subkey_generation(k, n)
 
     def set_key(self, key):
 
