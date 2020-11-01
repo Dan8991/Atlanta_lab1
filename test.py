@@ -24,10 +24,6 @@ n = 17
 lu = 32
 u = np.array([int(i == 0) for i in range(32)])
 k = np.array([int(i == 0) for i in range(32)])
-# u = np.arange(32)+1
-
-# print(f"key: {k}")
-
 
 linear_feistel = Feistel(32, k, n, linear_round_function, linear_subkey_generation)
 x = linear_feistel.encrypt(u)

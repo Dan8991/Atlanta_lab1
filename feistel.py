@@ -69,8 +69,8 @@ class Feistel():
 
         l = u.shape[0] // 2
         #Taking y, v swapped since the swap at the beginning of the cycle will swap them back
-        y = u[:l]
-        v = u[l:]
+        v = u[:l]
+        y = u[l:]
 
         for i in range(self.n):
 
@@ -81,7 +81,7 @@ class Feistel():
             w_i = self.round_function(y, subkeys[i])
             v = (z + w_i) % 2
 
-        return np.concatenate([v, y])
+        return np.concatenate([y, v])
 
     def encrypt(self, u):
         return self.perform_feistel(u, self.subkeys)
