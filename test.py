@@ -36,3 +36,23 @@ print(f"message: {bit_array_to_hex(u)}")
 print(f"key: {bit_array_to_hex(k)}")
 print(f"ciphertext: {bit_array_to_hex( x )}")
 print(f"decoded message: {bit_array_to_hex( u_hat )}")
+
+count=0
+n_checks = 10000
+for i in range(n_checks):
+    #generating random message
+    u = np.random.randint(2, size=(32))
+
+    #generating random key
+    k = np.random.randint(2, size=(32))
+    linear_feistel.set_key(k)
+
+    #encryption and decryption
+    x = linear_feistel.encrypt(u)
+    u_hat = linear_feistel.decrypt(x)
+
+    #checking that u and u_hat are the same
+    if (np.sum(u-u_hat) == 0):
+        count+=1
+
+print(f"key correctly decrypted {count} times out of {n_checks}")

@@ -61,7 +61,7 @@ class Feistel():
     def set_key(self, key):
 
         self.key = key
-        self.subkeys = self.subkey_generation(self.key, self.n, self.lu)
+        self.subkeys = self.subkey_generation(self.key, self.n)
 
     #if you pass the subkeys in correct order you get the encryption function
     #in reverse order you get decryption
