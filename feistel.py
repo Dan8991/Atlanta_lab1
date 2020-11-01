@@ -49,19 +49,19 @@ class Feistel():
     subkey_generation = subkey generation function
     '''
 
-    def __init__(self, lu, k, n, round_function, subkey_generation):
+    def __init__(self, lu, key, n, round_function, subkey_generation):
 
         self.lu = lu
-        self.k = k
+        self.key = key
         self.n = n
         self.round_function = round_function
         self.subkey_generation = subkey_generation
-        self.subkeys = subkey_generation(k, n)
+        self.subkeys = subkey_generation(key, n)
 
     def set_key(self, key):
 
         self.key = key
-        self.subkeys = self.subkey_generation(self.k, self.n, self.lu)
+        self.subkeys = self.subkey_generation(self.key, self.n)
 
     #if you pass the subkeys in correct order you get the encryption function
     #in reverse order you get decryption
