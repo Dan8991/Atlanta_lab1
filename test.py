@@ -84,6 +84,7 @@ for i in range(n_messages):
     x.append(x_final)
 
 possible_keys = meet_in_the_middle_attack(u, x, first_cipher)
-print([str(k) for k in possible_keys], bit_array_to_hex(k_1), bit_array_to_hex(k_2))
+print("Key found with attack: ", [str(k) for k in possible_keys])
+print("True key: ", bit_array_to_hex(k_1), bit_array_to_hex(k_2))
 
 

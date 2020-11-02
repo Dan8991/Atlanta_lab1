@@ -246,12 +246,12 @@ def meet_in_the_middle_attack(u, x, feistel, power=15):
 
         for keys in final_keys:
             feistel.set_key(keys.k1)
-            x_prime = bit_array_to_hex(feistel.encrypt(u_i))
+            x_prime = feistel.encrypt(u_i)
 
             feistel.set_key(keys.k2)
-            x_second = bit_array_to_hex(feistel.decrypt(x_i))
+            x_second = feistel.decrypt(x_i)
 
-            if x_prime == x_second:
+            if np.sum(np.abs(x_prime - x_second)) == 0:
                 temp_keys.append(keys)
 
         final_keys = temp_keys
