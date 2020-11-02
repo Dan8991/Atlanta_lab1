@@ -1,26 +1,8 @@
 from feistel import linear_subkey_generation, linear_round_function, Feistel
-from feistel import round_function_task_5, round_function_task_7
+from feistel import round_function_task_5, round_function_task_7, bit_array_to_hex
+from feistel import meet_in_the_middle_attack
 
 import numpy as np
-
-def bit_array_to_hex(bit_array):
-
-    #defining the hex character
-    HEX_CHAR = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
-
-    #grouping by 4 the bits
-    blocks = np.reshape(np.copy(bit_array), (-1, 4))
-
-    #generating the powers of 2 to be multiplied by the bits
-    powers =  np.reshape(2 ** np.arange(4), (1, 4))
-    powers = powers[:, ::-1]
-
-    blocks *= powers
-
-    #finding the number from 0 to 15 representing the hex value for the 4 bits
-    hex_int = np.sum(blocks, axis = 1, dtype=int)
-
-    return  "0x" + "".join([HEX_CHAR[i] for i in hex_int])
 
 def test_cipher(u, k, cipher, perform_check=False):
 
@@ -82,3 +64,26 @@ u = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 k = np.array([0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0])
 cipher_task_7 = Feistel(16, k, n, round_function_task_7, linear_subkey_generation)
 test_cipher(u, k, cipher_task_7)
+
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 8\n")
+
+n_messages = 4
+u = np.random.randint(2, size=(n_messages, lu), dtype=int)
+k_1 = np.random.randint(2, size=(lu), dtype=int)
+k_2 = np.random.randint(2, size=(lu), dtype=int)
+
+first_cipher = Feistel(16, k_1, n, round_function_task_7, linear_subkey_generation)
+second_cipher = Feistel(16, k_2, n, round_function_task_7, linear_subkey_generation)
+
+x = []
+
+for i in range(n_messages):
+    x_temp = first_cipher.encrypt(u[i])
+    x_final = second_cipher.encrypt(x_temp)
+    x.append(x_final)
+
+possible_keys = meet_in_the_middle_attack(u, x, first_cipher)
+print([str(k) for k in possible_keys], bit_array_to_hex(k_1), bit_array_to_hex(k_2))
+
+

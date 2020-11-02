@@ -1,4 +1,25 @@
 import numpy as np
+from functools import reduce
+
+def bit_array_to_hex(bit_array):
+
+    #defining the hex character
+    HEX_CHAR = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
+
+    #grouping by 4 the bits
+    blocks = np.reshape(np.copy(bit_array), (-1, 4))
+
+    #generating the powers of 2 to be multiplied by the bits
+    powers =  np.reshape(2 ** np.arange(4), (1, 4))
+    powers = powers[:, ::-1]
+
+    blocks *= powers
+
+    #finding the number from 0 to 15 representing the hex value for the 4 bits
+    hex_int = np.sum(blocks, axis = 1, dtype=int)
+
+    return  "0x" + "".join([HEX_CHAR[i] for i in hex_int])
+
 
 '''
 k = key
@@ -157,4 +178,91 @@ class Feistel():
 
     def decrypt(self, x):
         return self.perform_feistel(x, self.subkeys[::-1,:])
+
+class key_couples():
+
+    def __init__(self, k1, k2):
+        self.k1 = k1
+        self.k2 = k2
+        self.hex_k1 = bit_array_to_hex(k1)
+        self.hex_k2 = bit_array_to_hex(k2)
+
+    def __hash__(self):
+        key_tot = np.concatenate([self.k1, self.k2])
+        powers = 2**np.arange(len(key_tot))
+        return int(np.dot(key_tot, powers))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__() 
+
+    def __str__(self):
+        return self.hex_k1 + " " + self.hex_k2
+
+def meet_in_the_middle_attack(u, x, feistel, power=15):
+
+    lk = u.shape[1]
+    n_guesses = int(2**power)
+    #randomly sampling n_guesses keys for the first cipher and n_guesses keys for the second cipher
+    k_prime = np.random.randint(2, size=(n_guesses, lk), dtype=int)
+    k_second = np.random.randint(2, size=(n_guesses, lk), dtype=int)
+
+    x_prime = []
+    x_second = []
+    #finding the intermediate ciphers for each of the keys
+    for i in range(n_guesses):
+
+        feistel.set_key(k_prime[i])
+        x_prime.append((bit_array_to_hex(feistel.encrypt(u[0])), k_prime[i]))
+
+        feistel.set_key(k_second[i])
+        x_second.append((bit_array_to_hex(feistel.decrypt(x[0])), k_second[i]))
+
+    #sorting the keys
+    x_prime.sort(key=lambda x: x[0])
+    x_second.sort(key=lambda x: x[0])
+
+    i = 0
+    j = 0
+    correct_couples = []
+
+    #searching for matching intermediate keys
+    while i < len(x_prime) and j < len(x_second):
+        if x_prime[i][0] < x_second[j][0]:
+            i += 1
+        elif x_prime[i][0] > x_second[j][0]:
+            j += 1
+        else:
+            correct_couples.append(key_couples(x_prime[i][1], x_second[j][1]))
+            i+=1
+            j+=1
+
+    #removing duplicates
+    final_keys = list(set(correct_couples))
+
+    #for all the other u_i, x_i couples see if the keys found before actually work
+    for u_i, x_i in zip(u[1:], x[1:]):
+
+        temp_keys = []
+
+        for keys in final_keys:
+            feistel.set_key(keys.k1)
+            x_prime = bit_array_to_hex(feistel.encrypt(u_i))
+
+            feistel.set_key(keys.k2)
+            x_second = bit_array_to_hex(feistel.decrypt(x_i))
+
+            if x_prime == x_second:
+                temp_keys.append(keys)
+
+        final_keys = temp_keys
+
+
+
+    return final_keys
+
+
+
+
+    
+
 
