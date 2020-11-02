@@ -1,12 +1,5 @@
 
-
 import numpy as np
-
-'''
-k = key
-n = number of rounds
-l = message length
-'''
 
 
 def linear_subkey_generation(k, n):
@@ -17,7 +10,7 @@ def linear_subkey_generation(k, n):
     return subkeys
 
 
-def linear_round_function(y_i, k_i):
+def non_linear_round_function(y_i, k_i):
     l = y_i.shape[0]
 
     w_i = np.zeros(l)
@@ -27,27 +20,26 @@ def linear_round_function(y_i, k_i):
     for k_i we would have the index [4j - 3] = [1, 5, 9, ...] for j = [1, 2, ...]
     here the arrays start from 0 so we want to have [0, 4, 8, ...] i.e. 4j
     for y_i we would have varius index:
-    [2j-1] = [1,3,5,7,...] for j=[1,2,...] here the array start from 0 so we want to have [0,2,4,6,...]
+    [2j-1] = [1,3,5,7,...] for j=[1,2,...] here the array start from 0 so 
+    we want to have [0,2,4,6,...]
     [2j] = [2,4,6,8,...] --> [1,2,5,7,..]
-    [4j-2] = [2,6,10,14,18,...] --> [1,5,9,13,...]
+    [4j] = [4,8,12,...] --> [3,7,11,...]
 
     '''
 
-    w_i[:l // 2] = y_i[:l // 2] + {k_i[::4] & (y_i[::2] | k_i[::2] | k_i[1:(l / 2) - 1:2] | k_i[1:(l/2)-2:4])}
+    w_i[:l // 2] = (y_i[:l // 2] & k_i[::2]) | (y_i[::2] & k_i[1::2]) | k_i[3::4]
 
     '''
     in the instructions we have j = [l/2 + 1, l/2 + 2, ...] so here we need j + 1
     furthermore since the indexes of k_i start from 0 we need to place a -1 at the
     end of the indexes
-    [4j-2l] = [4,8,12,...] --> [3,7,11,...]
     [4j-2l-1] = [3,7,11,...] --> [2,6,10,...]
-    [2j-1] = [9,11,13,...] --> [8,10,12,...]
     [2j] = [10,12,14,...] --> [9,11,13,...]
     [2j-l] = [2,4,6,...] --> [1,3,5,...]
 
     '''
 
-    w_i[l // 2:] = y_i[l // 2:] + {k_i[3::4] & (k_i[2::4] | k_i[(l/2)+1::2] | k_i[(l / 2) + 1::2] | y_i[1::2])}
+    w_i[l // 2:] = (y_i[l // 2:] & k_i[::2]) | (k_i[2::4] & k_i[1::2]) | y_i[1::2]
 
     # the %2 is needed since we are working with binary numbers
     return w_i % 2
@@ -98,11 +90,9 @@ class Feistel():
     def decrypt(self, x):
         return self.perform_feistel(x, self.subkeys[::-1, :])
 
-
 '''
 TEST
 '''
-
 def bit_array_to_hex(bit_array):
 
     #defining the hex character
@@ -122,12 +112,12 @@ def bit_array_to_hex(bit_array):
 
     return  "0x" + "".join([HEX_CHAR[i] for i in hex_int])
 
-n = 5
-lu = 32
-u = np.array([0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0])
-k = np.array([1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1])
+n = 13
+lu = 16
+u = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+k = np.array([0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0])
 
-linear_feistel = Feistel(32, k, n, linear_round_function, linear_subkey_generation)
+linear_feistel = Feistel(16, k, n, non_linear_round_function, linear_subkey_generation)
 x = linear_feistel.encrypt(u)
 u_hat = linear_feistel.decrypt(x)
 print(f"message: {bit_array_to_hex(u)}")
