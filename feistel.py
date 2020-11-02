@@ -36,7 +36,76 @@ def linear_round_function(y_i, k_i):
 
     #the %2 is needed since we are working with binary numbers
     return w_i % 2
-        
+
+def round_function_task_5(y_i, k_i):
+    l = y_i.shape[0]
+
+    w_i = np.copy(y_i)
+
+    '''
+    y_i[j] remains the same since also the indexes in y_i start from 0
+    for k_i we would have the index [4j - 3] = [1, 5, 9, ...] for j = [1, 2, ...]
+    here the arrays start from 0 so we want to have [0, 4, 8, ...] i.e. 4j
+    for y_i we would have varius index:
+    [2j-1] = [1,3,5,7,...] for j=[1,2,...] here the array start from 0 so 
+    we want to have [0,2,4,6,...]
+    [2j] = [2,4,6,8,...] --> [1,2,5,7,..]
+    [4j-2] = [2,6,10,14,18,...] --> [1,5,9,13,...]
+    
+    '''
+    w_i[:l // 2] += k_i[::4] * ( y_i[::2] | k_i[:l:2] | k_i[1:(l+1):2] | k_i[1::4])
+
+    '''
+    in the instructions we have j = [l/2 + 1, l/2 + 2, ...] so here we need j + 1
+    furthermore since the indexes of k_i start from 0 we need to place a -1 at the
+    end of the indexes
+    [4j-2l] = [4,8,12,...] --> [3,7,11,...]
+    [4j-2l-1] = [3,7,11,...] --> [2,6,10,...]
+    [2j-1] = [9,11,13,...] --> [8,10,12,...]
+    [2j] = [10,12,14,...] --> [9,11,13,...]
+    [2j-l] = [2,4,6,...] --> [1,3,5,...]
+    
+    '''
+    w_i[l // 2:] += k_i[3::4] * (k_i[2::4] | k_i[l::2] | k_i[(l+1)::2] | y_i[1::2])
+
+    # the %2 is needed since we are working with binary numbers
+    return w_i % 2
+
+
+def round_function_task_7(y_i, k_i):
+    l = y_i.shape[0]
+
+    w_i = np.zeros(l, dtype = int)
+
+    '''
+    y_i[j] remains the same since also the indexes in y_i start from 0
+    for k_i we would have the index [4j - 3] = [1, 5, 9, ...] for j = [1, 2, ...]
+    here the arrays start from 0 so we want to have [0, 4, 8, ...] i.e. 4j
+    for y_i we would have varius index:
+    [2j-1] = [1,3,5,7,...] for j=[1,2,...] here the array start from 0 so 
+    we want to have [0,2,4,6,...]
+    [2j] = [2,4,6,8,...] --> [1,2,5,7,..]
+    [4j] = [4,8,12,...] --> [3,7,11,...]
+
+    '''
+
+    w_i[:l // 2] = (y_i[:l // 2] & k_i[:l:2]) | (y_i[::2] & k_i[1:(l+1):2]) | k_i[3::4]
+
+    '''
+    in the instructions we have j = [l/2 + 1, l/2 + 2, ...] so here we need j + 1
+    furthermore since the indexes of k_i start from 0 we need to place a -1 at the
+    end of the indexes
+    [4j-2l-1] = [3,7,11,...] --> [2,6,10,...]
+    [2j] = [10,12,14,...] --> [9,11,13,...]
+    [2j-l] = [2,4,6,...] --> [1,3,5,...]
+
+    '''
+
+    w_i[l // 2:] = (y_i[l // 2:] & k_i[l::2]) | (k_i[2::4] & k_i[(l+1)::2]) | y_i[1::2]
+
+    # the %2 is needed since we are working with binary numbers
+    return w_i % 2
+
 
 
 class Feistel():
