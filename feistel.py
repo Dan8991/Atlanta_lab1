@@ -262,6 +262,34 @@ def meet_in_the_middle_attack(u, x, feistel, power=15):
 
 
 
+def vulnerability(lx,lk,lu,n):
+    
+    a_matrix = np.zeros([lx,lk],dtype=int)
+    b_matrix = np.zeros([lx,lu],dtype=int)
+
+    feistel = Feistel(lu, np.zeros(lk), n, linear_round_function, linear_subkey_generation)
+    for j in range(lk):   
+        #compute first B column
+        feistel.set_key(np.zeros(lk))
+        e_j = np.array([int(i == j) for i in range(lk)]) %2
+        b_j = feistel.encrypt(e_j)
+        #fill B matrix
+        b_matrix[:,j] = b_j
+           
+        #change the key and compute A column
+        feistel.set_key(e_j)
+        a_j = feistel.encrypt(np.zeros(lu,dtype=int))
+        #fill A matrix
+        a_matrix[:,j] = a_j
+
+    return a_matrix,b_matrix
+
+def linear_cryptoanalysis(a_matrix,b_matrix,u,x):
+    inv = (np.linalg.inv(a_matrix) * np.linalg.det(a_matrix))
+    inv = inv % 2
+    inv = inv.astype(int)
+    print(x.shape, u.shape, a_matrix.shape, b_matrix.shape)
+    return (inv @ (x + (b_matrix @ u))) % 2
 
     
 
