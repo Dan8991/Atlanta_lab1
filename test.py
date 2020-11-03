@@ -1,54 +1,102 @@
 from feistel import linear_subkey_generation, linear_round_function, Feistel
+from feistel import round_function_task_5, round_function_task_7, bit_array_to_hex
+from feistel import meet_in_the_middle_attack, vulnerability, linear_cryptoanalysis
+
 import numpy as np
 
-def bit_array_to_hex(bit_array):
+def test_cipher(u, k, cipher, perform_check=False):
 
-    #defining the hex character
-    HEX_CHAR = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
+    x = cipher.encrypt(u)
+    u_hat = cipher.decrypt(x)
 
-    #grouping by 4 the bits
-    blocks = np.reshape(np.copy(bit_array), (-1, 4))
+    print(f"message: {bit_array_to_hex(u)}")
+    print(f"key: {bit_array_to_hex(k)}")
+    print(f"ciphertext: {bit_array_to_hex( x )}")
+    print(f"decoded message: {bit_array_to_hex( u_hat )}")
 
-    #generating the powers of 2 to be multiplied by the bits
-    powers =  np.reshape(2 ** np.arange(4), (1, 4))
-    powers = powers[:, ::-1]
+    if perform_check:
 
-    blocks *= powers
+        count=0
+        n_checks = 10000
 
-    #finding the number from 0 to 15 representing the hex value for the 4 bits
-    hex_int = np.sum(blocks, axis = 1, dtype=int)
+        for _ in range(n_checks):
+            #generating random message
+            u = np.random.randint(2, size=(lu))
 
-    return  "0x" + "".join([HEX_CHAR[i] for i in hex_int])
+            #generating random key
+            k = np.random.randint(2, size=(lu))
+            linear_feistel.set_key(k)
 
+            #encryption and decryption
+            x = linear_feistel.encrypt(u)
+            u_hat = linear_feistel.decrypt(x)
+
+            #checking that u and u_hat are the same
+            if (np.sum(u-u_hat) == 0):
+                count+=1
+
+        print(f"key correctly decrypted {count} times out of {n_checks}")
+
+
+print("\nTASK 1 AND 2\n")
 n = 17
 lu = 32
-u = np.array([int(i == 0) for i in range(32)])
-k = np.array([int(i == 0) for i in range(32)])
+u = np.array([int(i == 0) for i in range(lu)])
+k = np.array([int(i == 0) for i in range(lu)])
+linear_feistel = Feistel(lu, k, n, linear_round_function, linear_subkey_generation)
+test_cipher(u, k, linear_feistel)
 
-linear_feistel = Feistel(32, k, n, linear_round_function, linear_subkey_generation)
-x = linear_feistel.encrypt(u)
-u_hat = linear_feistel.decrypt(x)
-print(f"message: {bit_array_to_hex(u)}")
-print(f"key: {bit_array_to_hex(k)}")
-print(f"ciphertext: {bit_array_to_hex( x )}")
-print(f"decoded message: {bit_array_to_hex( u_hat )}")
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 3 AND 4\n")
+u = np.random.randint(2, size=(lu))
+k = np.random.randint(2, size=(lu))
+feistel = Feistel(32, k, 17, linear_round_function, linear_subkey_generation)
+x = feistel.encrypt(u)
+a_matrix,b_matrix = vulnerability(32,32,32,17)
+key = linear_cryptoanalysis(a_matrix,b_matrix,u,x)
+print("u:",bit_array_to_hex(u))
+print("k:",bit_array_to_hex(k))
+print("x:",bit_array_to_hex(x))
+print("k_hat:", bit_array_to_hex(key))
 
-count=0
-n_checks = 10000
-for i in range(n_checks):
-    #generating random message
-    u = np.random.randint(2, size=(32))
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 5\n")
+n = 5
+u = np.array([0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0])
+k = np.array([1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1])
+cipher_task_5 = Feistel(lu, k, n, round_function_task_5, linear_subkey_generation)
+test_cipher(u, k, cipher_task_5)
 
-    #generating random key
-    k = np.random.randint(2, size=(32))
-    linear_feistel.set_key(k)
 
-    #encryption and decryption
-    x = linear_feistel.encrypt(u)
-    u_hat = linear_feistel.decrypt(x)
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 7\n")
+n = 13
+lu = 16
+u = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+k = np.array([0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0])
+cipher_task_7 = Feistel(16, k, n, round_function_task_7, linear_subkey_generation)
+test_cipher(u, k, cipher_task_7)
 
-    #checking that u and u_hat are the same
-    if (np.sum(u-u_hat) == 0):
-        count+=1
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 8\n")
 
-print(f"key correctly decrypted {count} times out of {n_checks}")
+n_messages = 4
+u = np.random.randint(2, size=(n_messages, lu), dtype=int)
+k_1 = np.random.randint(2, size=(lu), dtype=int)
+k_2 = np.random.randint(2, size=(lu), dtype=int)
+
+first_cipher = Feistel(16, k_1, n, round_function_task_7, linear_subkey_generation)
+second_cipher = Feistel(16, k_2, n, round_function_task_7, linear_subkey_generation)
+
+x = []
+
+for i in range(n_messages):
+    x_temp = first_cipher.encrypt(u[i])
+    x_final = second_cipher.encrypt(x_temp)
+    x.append(x_final)
+
+possible_keys = meet_in_the_middle_attack(u, x, first_cipher)
+print("Key found with attack: ", [str(k) for k in possible_keys])
+print("True key: ", bit_array_to_hex(k_1), bit_array_to_hex(k_2))
+
+
