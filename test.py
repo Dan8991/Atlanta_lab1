@@ -1,6 +1,6 @@
 from feistel import linear_subkey_generation, linear_round_function, Feistel
 from feistel import round_function_task_5, round_function_task_7, bit_array_to_hex
-from feistel import meet_in_the_middle_attack
+from feistel import meet_in_the_middle_attack, vulnerability, linear_cryptoanalysis
 
 import numpy as np
 
@@ -46,6 +46,18 @@ k = np.array([int(i == 0) for i in range(lu)])
 linear_feistel = Feistel(lu, k, n, linear_round_function, linear_subkey_generation)
 test_cipher(u, k, linear_feistel)
 
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 3 AND 4\n")
+u = np.random.randint(2, size=(lu))
+k = np.random.randint(2, size=(lu))
+feistel = Feistel(32, k, 17, linear_round_function, linear_subkey_generation)
+x = feistel.encrypt(u)
+a_matrix,b_matrix = vulnerability(32,32,32,17)
+key = linear_cryptoanalysis(a_matrix,b_matrix,u,x)
+print("u:",bit_array_to_hex(u))
+print("k:",bit_array_to_hex(k))
+print("x:",bit_array_to_hex(x))
+print("k_hat:", bit_array_to_hex(key))
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 5\n")

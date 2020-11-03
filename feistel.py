@@ -285,10 +285,9 @@ def vulnerability(lx,lk,lu,n):
     return a_matrix,b_matrix
 
 def linear_cryptoanalysis(a_matrix,b_matrix,u,x):
-    inv = (np.linalg.inv(a_matrix) * np.linalg.det(a_matrix))
+    inv = np.round((np.linalg.inv(a_matrix) * np.linalg.det(a_matrix))).astype(int)
     inv = inv % 2
     inv = inv.astype(int)
-    print(x.shape, u.shape, a_matrix.shape, b_matrix.shape)
     return (inv @ (x + (b_matrix @ u))) % 2
 
     
