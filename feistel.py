@@ -1,5 +1,6 @@
 import numpy as np
 from functools import reduce
+from scipy.linalg import null_space
 
 def bit_array_to_hex(bit_array):
 
@@ -139,7 +140,7 @@ class Feistel():
     subkey_generation = subkey generation function
     '''
 
-    def __init__(self, lu, key, n, round_function, subkey_generation):
+    def __init__(self, lu, key, n, round_function, subkey_generation, with_approximations=False):
 
         self.lu = lu
         self.key = key
@@ -147,6 +148,9 @@ class Feistel():
         self.round_function = round_function
         self.subkey_generation = subkey_generation
         self.subkeys = subkey_generation(key, n)
+        self.states = []
+        self.with_approximations = with_approximations
+        self.approximations = 0
 
     def set_key(self, key):
 
@@ -155,7 +159,7 @@ class Feistel():
 
     #if you pass the subkeys in correct order you get the encryption function
     #in reverse order you get decryption
-    def perform_feistel(self, u, subkeys):
+    def perform_feistel(self, u, subkeys, encrypt = False):
 
         l = u.shape[0] // 2
         #Taking y, v swapped since the swap at the beginning of the cycle will swap them back
@@ -170,11 +174,13 @@ class Feistel():
 
             w_i = self.round_function(y, subkeys[i])
             v = (z + w_i) % 2
+            if encrypt:
+                self.states.append(np.concatenate([y, v]))
 
         return np.concatenate([y, v])
 
     def encrypt(self, u):
-        return self.perform_feistel(u, self.subkeys)
+        return self.perform_feistel(u, self.subkeys, encrypt = True)
 
     def decrypt(self, x):
         return self.perform_feistel(x, self.subkeys[::-1,:])
@@ -198,7 +204,7 @@ class key_couples():
     def __str__(self):
         return self.hex_k1 + " " + self.hex_k2
 
-def meet_in_the_middle_attack(u, x, feistel, power=15):
+def meet_in_the_middle_attack(u, x, feistel, power=16):
 
     lk = u.shape[1]
     n_guesses = int(2**power)
@@ -260,17 +266,29 @@ def meet_in_the_middle_attack(u, x, feistel, power=15):
 
     return final_keys
 
+#same as round_function_task_5 but with xor instead of or to linearize the function
+def linearized_round_function_task_5(y_i, k_i):
+    l = y_i.shape[0]
+
+    w_i = np.copy(y_i)
+
+    w_i[:l // 2] += k_i[::4]
+
+    w_i[l // 2:] += k_i[3::4]
+    # the %2 is needed since we are working with binary numbers
+    return w_i % 2
 
 
-def vulnerability(lx,lk,lu,n):
+
+def vulnerability(lx,lk,lu,n, round_function, subkey_generation):
     
     a_matrix = np.zeros([lx,lk],dtype=int)
     b_matrix = np.zeros([lx,lu],dtype=int)
 
-    feistel = Feistel(lu, np.zeros(lk), n, linear_round_function, linear_subkey_generation)
+    feistel = Feistel(lu, np.zeros(lk), n, round_function, subkey_generation)
     for j in range(lk):   
         #compute first B column
-        feistel.set_key(np.zeros(lk))
+        feistel.set_key(np.zeros(lk, dtype=int))
         e_j = np.array([int(i == j) for i in range(lk)]) %2
         b_j = feistel.encrypt(e_j)
         #fill B matrix
@@ -289,6 +307,24 @@ def linear_cryptoanalysis(a_matrix,b_matrix,u,x):
     inv = inv % 2
     inv = inv.astype(int)
     return (inv @ (x + (b_matrix @ u))) % 2
+
+def get_message_cipher_from_file(filename, l):
+    messages = []
+    ciphers = []
+    with open(filename, "r") as f:
+        for line in f.readlines():
+            u_hex, x_hex = line.split()
+            u = np.empty([l],dtype=int)
+            x = np.empty([l],dtype=int)
+
+            u_bin = bin(int(u_hex, 16))[2:].zfill(l)
+            x_bin= bin(int(x_hex, 16))[2:].zfill(l)
+            u[:] = [int(d) for d in str(u_bin)]
+            x[:] = [int(d) for d in str(x_bin)]
+            messages.append(u)
+            ciphers.append(x)
+
+    return np.array(messages), np.array(ciphers)
 
     
 

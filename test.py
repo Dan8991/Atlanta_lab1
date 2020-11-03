@@ -1,6 +1,7 @@
 from feistel import linear_subkey_generation, linear_round_function, Feistel
 from feistel import round_function_task_5, round_function_task_7, bit_array_to_hex
 from feistel import meet_in_the_middle_attack, vulnerability, linear_cryptoanalysis
+from feistel import linearized_round_function_task_5, get_message_cipher_from_file
 
 import numpy as np
 
@@ -52,12 +53,14 @@ u = np.random.randint(2, size=(lu))
 k = np.random.randint(2, size=(lu))
 feistel = Feistel(32, k, 17, linear_round_function, linear_subkey_generation)
 x = feistel.encrypt(u)
-a_matrix,b_matrix = vulnerability(32,32,32,17)
-key = linear_cryptoanalysis(a_matrix,b_matrix,u,x)
-print("u:",bit_array_to_hex(u))
-print("k:",bit_array_to_hex(k))
-print("x:",bit_array_to_hex(x))
-print("k_hat:", bit_array_to_hex(key))
+a_matrix,b_matrix = vulnerability(32,32,32,17, linear_round_function, linear_subkey_generation)
+u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_linear.hex", 32)
+predicted_keys = []
+for i in range(u.shape[0]):
+    key = linear_cryptoanalysis(a_matrix,b_matrix,u[i],x[i])
+    predicted_keys.append(bit_array_to_hex(key))
+
+print(f"Predicted keys {np.unique(predicted_keys, return_counts=True)}")
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 5\n")
@@ -67,6 +70,21 @@ k = np.array([1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 
 cipher_task_5 = Feistel(lu, k, n, round_function_task_5, linear_subkey_generation)
 test_cipher(u, k, cipher_task_5)
 
+print("".join(["-" for _ in range(20)]))
+print("\nTASK 6\n")
+found = False
+u = np.random.randint(2, size=(lu), dtype=int)
+k = np.random.randint(2, size=(lu),dtype=int)
+feistel = Feistel(32, k, 5, round_function_task_5, linear_subkey_generation)
+x = feistel.encrypt(u)
+a_matrix,b_matrix = vulnerability(32,32,32,5, linearized_round_function_task_5, linear_subkey_generation)
+u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_nearly_linear.hex", 32)
+predicted_keys = []
+for i in range(u.shape[0]):
+    key = linear_cryptoanalysis(a_matrix, b_matrix, u[i],x[i])
+    predicted_keys.append(bit_array_to_hex(key))
+
+print(f"Predicted keys {np.unique(predicted_keys, return_counts=True)}")
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 7\n")
@@ -80,23 +98,9 @@ test_cipher(u, k, cipher_task_7)
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 8\n")
 
-n_messages = 4
-u = np.random.randint(2, size=(n_messages, lu), dtype=int)
-k_1 = np.random.randint(2, size=(lu), dtype=int)
-k_2 = np.random.randint(2, size=(lu), dtype=int)
-
-first_cipher = Feistel(16, k_1, n, round_function_task_7, linear_subkey_generation)
-second_cipher = Feistel(16, k_2, n, round_function_task_7, linear_subkey_generation)
-
-x = []
-
-for i in range(n_messages):
-    x_temp = first_cipher.encrypt(u[i])
-    x_final = second_cipher.encrypt(x_temp)
-    x.append(x_final)
-
-possible_keys = meet_in_the_middle_attack(u, x, first_cipher)
+first_cipher = Feistel(16, np.zeros(16), n, round_function_task_7, linear_subkey_generation)
+u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_non_linear.hex", 16)
+possible_keys = meet_in_the_middle_attack(u[:3], x[:3], first_cipher)
 print("Key found with attack: ", [str(k) for k in possible_keys])
-print("True key: ", bit_array_to_hex(k_1), bit_array_to_hex(k_2))
 
 
