@@ -1,5 +1,7 @@
 import numpy as np
+from tqdm import tqdm
 from functools import reduce
+from itertools import product
 from scipy.linalg import null_space
 
 def bit_array_to_hex(bit_array):
@@ -204,24 +206,27 @@ class key_couples():
     def __str__(self):
         return self.hex_k1 + " " + self.hex_k2
 
-def meet_in_the_middle_attack(u, x, feistel, power=16):
+def meet_in_the_middle_attack(u, x, feistel, power=3):
 
     lk = u.shape[1]
     n_guesses = int(2**power)
     #randomly sampling n_guesses keys for the first cipher and n_guesses keys for the second cipher
+    #also removing duplicates with the unique function
     k_prime = np.random.randint(2, size=(n_guesses, lk), dtype=int)
+    k_prime = np.unique(k_prime, axis = 0)
     k_second = np.random.randint(2, size=(n_guesses, lk), dtype=int)
+    k_second = np.unique(k_second, axis = 0)
 
     x_prime = []
     x_second = []
     #finding the intermediate ciphers for each of the keys
-    for i in range(n_guesses):
-
+    for i in range(k_prime.shape[0]):
         feistel.set_key(k_prime[i])
         x_prime.append((bit_array_to_hex(feistel.encrypt(u[0])), k_prime[i]))
-
+    for i in range(k_second.shape[0]):
         feistel.set_key(k_second[i])
         x_second.append((bit_array_to_hex(feistel.decrypt(x[0])), k_second[i]))
+    print("Found all intermediate pairs")
 
     #sorting the keys
     x_prime.sort(key=lambda x: x[0])
@@ -239,15 +244,29 @@ def meet_in_the_middle_attack(u, x, feistel, power=16):
             j += 1
         else:
             correct_couples.append(key_couples(x_prime[i][1], x_second[j][1]))
+            #since this doesn't work with multiple equal ciphers we need the next part
+
+            m = j + 1
+            while(m < len(x_second)) and (x_second[m][0] == x_prime[i][0]):
+                correct_couples.append(key_couples(x_prime[i][1], x_second[m][1]))
+                m += 1
+
+            m = i + 1
+            while(m < len(x_prime)) and (x_second[j][0] == x_prime[m][0]):
+                correct_couples.append(key_couples(x_prime[m][1], x_second[j][1]))
+                m += 1
+
             i+=1
             j+=1
+
+    print("Found good matches for the first couple u, x")
+    print("Now testing which of the keys also work on the other pairs")
 
     #removing duplicates
     final_keys = list(set(correct_couples))
 
     #for all the other u_i, x_i couples see if the keys found before actually work
     for u_i, x_i in zip(u[1:], x[1:]):
-
         temp_keys = []
 
         for keys in final_keys:
@@ -265,20 +284,6 @@ def meet_in_the_middle_attack(u, x, feistel, power=16):
 
 
     return final_keys
-
-#same as round_function_task_5 but with xor instead of or to linearize the function
-def linearized_round_function_task_5(y_i, k_i):
-    l = y_i.shape[0]
-
-    w_i = np.copy(y_i)
-
-    w_i[:l // 2] += k_i[::4]
-
-    w_i[l // 2:] += k_i[3::4]
-    # the %2 is needed since we are working with binary numbers
-    return w_i % 2
-
-
 
 def vulnerability(lx,lk,lu,n, round_function, subkey_generation):
     
@@ -302,11 +307,13 @@ def vulnerability(lx,lk,lu,n, round_function, subkey_generation):
 
     return a_matrix,b_matrix
 
-def linear_cryptoanalysis(a_matrix,b_matrix,u,x):
-    inv = np.round((np.linalg.inv(a_matrix) * np.linalg.det(a_matrix))).astype(int)
+def linear_cryptoanalysis(A, B, u, x, C=None):
+    inv = np.round((np.linalg.inv(A) * np.linalg.det(A))).astype(int)
     inv = inv % 2
     inv = inv.astype(int)
-    return (inv @ (x + (b_matrix @ u))) % 2
+    if C is None:
+        C = np.eye(x.shape[0])
+    return (inv @ ((C @ x) + (B @ u))) % 2
 
 def get_message_cipher_from_file(filename, l):
     messages = []
@@ -327,5 +334,19 @@ def get_message_cipher_from_file(filename, l):
     return np.array(messages), np.array(ciphers)
 
     
+def explore_close_solutions(u, x, k, feistel):
+    solution = None
+    for i in range(len(k)):
+        temp = np.copy(k).astype(int)
+        temp[i] += 1
+        temp[i] %= 2
+        feistel.set_key(temp)
+        count = 0
+        for u_i, x_i in zip(u, x):
+            x_hat = feistel.encrypt(u_i)
+            if np.sum(np.abs(x_hat - x_i)) == 0:
+                count += 1
 
-
+        if count == len(u):
+                solution = temp
+    return solution
