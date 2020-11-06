@@ -1,7 +1,7 @@
 from feistel import linear_subkey_generation, linear_round_function, Feistel
 from feistel import round_function_task_5, round_function_task_7, bit_array_to_hex
 from feistel import meet_in_the_middle_attack, vulnerability, linear_cryptoanalysis
-from feistel import linearized_round_function_task_5, get_message_cipher_from_file
+from feistel import get_message_cipher_from_file, explore_close_solutions
 
 import numpy as np
 
@@ -58,9 +58,15 @@ u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_linear.hex",
 predicted_keys = []
 for i in range(u.shape[0]):
     key = linear_cryptoanalysis(a_matrix,b_matrix,u[i],x[i])
-    predicted_keys.append(bit_array_to_hex(key))
+    predicted_keys.append(key)
 
-print(f"Predicted keys {np.unique(predicted_keys, return_counts=True)}")
+final_key = np.unique(predicted_keys, axis=0)
+print(f"key: {bit_array_to_hex(final_key[0])}")
+feistel.set_key(final_key[0])
+for u_i,x_i in zip(u,x):
+    x_p = feistel.encrypt(u_i)
+
+    print(f"u: {bit_array_to_hex(u_i)}, x_hat:{bit_array_to_hex(x_p)}, x:{bit_array_to_hex(x_i)}")
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 5\n")
@@ -72,19 +78,48 @@ test_cipher(u, k, cipher_task_5)
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 6\n")
-found = False
-u = np.random.randint(2, size=(lu), dtype=int)
-k = np.random.randint(2, size=(lu),dtype=int)
-feistel = Feistel(32, k, 5, round_function_task_5, linear_subkey_generation)
-x = feistel.encrypt(u)
-a_matrix,b_matrix = vulnerability(32,32,32,5, linearized_round_function_task_5, linear_subkey_generation)
+
+a_matrix,b_matrix = vulnerability(32,32,32,5, linear_round_function, linear_subkey_generation)
+feistel = Feistel(32, np.zeros(32), 5, round_function_task_5, linear_subkey_generation)
 u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_nearly_linear.hex", 32)
+
 predicted_keys = []
+
 for i in range(u.shape[0]):
     key = linear_cryptoanalysis(a_matrix, b_matrix, u[i],x[i])
-    predicted_keys.append(bit_array_to_hex(key))
+    predicted_keys.append(key)
 
-print(f"Predicted keys {np.unique(predicted_keys, return_counts=True)}")
+keys, counts = np.unique(predicted_keys, return_counts=True, axis = 0)
+final_key = None
+for key in keys:
+
+    count = 0
+    feistel.set_key(key.astype(int))
+
+    for u_i, x_i in zip(u, x):
+
+        x_hat = feistel.encrypt(u_i)
+
+        if np.sum(np.abs(x_hat - x_i)) == 0:
+            count += 1
+
+    if count == len(u):
+        final_key = key
+        break
+
+    final_key = explore_close_solutions(u, x, key, feistel)
+    if final_key is not None:
+        break
+
+if final_key is not None:
+    print(f"key: {bit_array_to_hex(final_key)}")
+    feistel.set_key(final_key.astype(int))
+    for u_i,x_i in zip(u,x):
+        x_p = feistel.encrypt(u_i)
+        print(f"u: {bit_array_to_hex(u_i)}, x_hat:{bit_array_to_hex(x_p)}, x:{bit_array_to_hex(x_i)}")
+else:
+    print("Found no suitable key")
+
 
 print("".join(["-" for _ in range(20)]))
 print("\nTASK 7\n")
@@ -99,8 +134,21 @@ print("".join(["-" for _ in range(20)]))
 print("\nTASK 8\n")
 
 first_cipher = Feistel(16, np.zeros(16), n, round_function_task_7, linear_subkey_generation)
-u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_non_linear.hex", 16)
-possible_keys = meet_in_the_middle_attack(u[:3], x[:3], first_cipher)
-print("Key found with attack: ", [str(k) for k in possible_keys])
+second_cipher = Feistel(16, np.zeros(16), n, round_function_task_7, linear_subkey_generation)
 
+print("This might take some time depending on how many keys you are testing(2 min max usually)")
+u, x = get_message_cipher_from_file("KPAdataAtlanta/KPApairsAtlanta_non_linear.hex", 16)
+possible_keys = meet_in_the_middle_attack(u, x, first_cipher, 15)
+correct_key = possible_keys
+
+if len(correct_key) > 0:
+    print("Keys found with attack: ", str(correct_key[0]))
+    first_cipher.set_key(correct_key[0].k1)
+    second_cipher.set_key(correct_key[0].k2)
+    correct = 0
+    for u_i, x_i in zip(u, x):
+        x_hat = second_cipher.encrypt(first_cipher.encrypt(u_i))
+        print(f"u: {bit_array_to_hex(u_i)}, x_hat: {bit_array_to_hex(x_hat)}, x: {bit_array_to_hex(x_i)}")
+else:
+    print("No suitable key found")
 
